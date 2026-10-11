@@ -1,0 +1,1893 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#080b11">
+  <meta name="description" content="LANKA — orderbook duvarlarını izleyen, coin bazlı öğrenen mobil piyasa ekranı.">
+  <title>LANKA / Orderbook Intelligence</title>
+  <style>
+    :root {
+      --bg: #080b11;
+      --bg-soft: #0d1119;
+      --panel: rgba(16, 22, 32, .92);
+      --panel-strong: #121a26;
+      --panel-hover: #172231;
+      --line: rgba(142, 164, 194, .14);
+      --line-strong: rgba(142, 164, 194, .25);
+      --text: #f1f5fb;
+      --muted: #8290a5;
+      --muted-2: #5d6a7e;
+      --mint: #5ce0bd;
+      --mint-soft: rgba(92, 224, 189, .13);
+      --coral: #ff887b;
+      --coral-soft: rgba(255, 136, 123, .13);
+      --violet: #a594ff;
+      --violet-soft: rgba(165, 148, 255, .14);
+      --gold: #ffc96b;
+      --blue: #71b7ff;
+      --shadow: 0 18px 60px rgba(0, 0, 0, .26);
+      --radius: 18px;
+      --radius-sm: 11px;
+      --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      min-width: 320px;
+      min-height: 100vh;
+      margin: 0;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 10% -5%, rgba(106, 88, 213, .17), transparent 31rem),
+        radial-gradient(circle at 94% 7%, rgba(50, 169, 150, .10), transparent 28rem),
+        var(--bg);
+      font-family: var(--sans);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button, select { font: inherit; }
+    button { color: inherit; }
+    ::selection { color: #06100e; background: var(--mint); }
+
+    .app-shell {
+      width: min(1500px, 100%);
+      margin: 0 auto;
+      padding: 0 24px 36px;
+    }
+
+    .topbar {
+      min-height: 82px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 11px;
+      color: var(--text);
+      text-decoration: none;
+    }
+
+    .brand-mark {
+      width: 35px;
+      height: 35px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(92, 224, 189, .35);
+      border-radius: 11px;
+      color: var(--mint);
+      background: linear-gradient(145deg, rgba(92, 224, 189, .20), rgba(165, 148, 255, .16));
+      box-shadow: 0 0 24px rgba(92, 224, 189, .08);
+      font-weight: 800;
+      font-size: 19px;
+    }
+
+    .brand-name {
+      letter-spacing: .18em;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .brand-sub {
+      margin-top: 2px;
+      color: var(--muted-2);
+      font-size: 9px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    .top-actions,
+    .status-pill,
+    .feed-note,
+    .memory-badge {
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .top-actions { gap: 10px; }
+
+    .status-pill {
+      gap: 8px;
+      min-height: 31px;
+      padding: 0 11px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      background: rgba(13, 17, 25, .7);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .04em;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--gold);
+      box-shadow: 0 0 0 4px rgba(255, 201, 107, .10);
+    }
+
+    .status-pill.live { color: var(--mint); border-color: rgba(92, 224, 189, .28); }
+    .status-pill.live .status-dot { background: var(--mint); box-shadow: 0 0 0 4px rgba(92, 224, 189, .10); }
+    .status-pill.demo .status-dot { background: var(--violet); box-shadow: 0 0 0 4px rgba(165, 148, 255, .10); }
+    .status-pill.offline .status-dot { background: var(--coral); box-shadow: 0 0 0 4px rgba(255, 136, 123, .10); }
+
+    .icon-button,
+    .text-button {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      cursor: pointer;
+      background: rgba(14, 19, 28, .8);
+      transition: .18s ease;
+    }
+
+    .icon-button {
+      width: 33px;
+      height: 33px;
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .icon-button:hover,
+    .text-button:hover { border-color: var(--line-strong); color: var(--text); background: var(--panel-hover); }
+
+    .text-button {
+      padding: 8px 11px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    main { padding-top: 22px; }
+
+    .hero-toolbar {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .control-group { display: flex; align-items: center; gap: 10px; }
+
+    .control-label,
+    .eyebrow {
+      color: var(--muted-2);
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+    }
+
+    .pair-select-wrap { position: relative; }
+
+    .pair-select {
+      min-width: 177px;
+      appearance: none;
+      padding: 11px 39px 11px 13px;
+      border: 1px solid var(--line-strong);
+      border-radius: 11px;
+      outline: none;
+      color: var(--text);
+      background: var(--panel-strong);
+      font-size: 13px;
+      font-weight: 750;
+      cursor: pointer;
+    }
+
+    .pair-select-wrap::after {
+      content: "⌄";
+      position: absolute;
+      right: 14px;
+      top: 8px;
+      color: var(--muted);
+      pointer-events: none;
+      font-size: 17px;
+    }
+
+    .pair-select:focus { border-color: rgba(92, 224, 189, .55); box-shadow: 0 0 0 3px rgba(92, 224, 189, .08); }
+
+    .timeframe-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      padding: 3px;
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      background: rgba(14, 19, 28, .8);
+    }
+
+    .timeframe-button {
+      min-width: 36px;
+      padding: 7px 8px;
+      border: 0;
+      border-radius: 8px;
+      color: var(--muted);
+      background: transparent;
+      cursor: pointer;
+      font-size: 10px;
+      font-weight: 800;
+      transition: .18s ease;
+    }
+
+    .timeframe-button:hover { color: var(--text); }
+    .timeframe-button.active { color: var(--text); background: var(--panel-hover); box-shadow: inset 0 0 0 1px var(--line-strong); }
+
+    .feed-note {
+      gap: 7px;
+      margin-bottom: 3px;
+      color: var(--muted-2);
+      font-size: 10px;
+      white-space: nowrap;
+    }
+
+    .feed-note .tiny-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--violet); }
+    .feed-note.live .tiny-dot { background: var(--mint); }
+
+    .market-strip {
+      display: grid;
+      grid-template-columns: minmax(250px, 1.4fr) repeat(4, minmax(125px, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .metric-card,
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: linear-gradient(145deg, rgba(19, 26, 38, .96), rgba(12, 17, 25, .96));
+      box-shadow: var(--shadow);
+    }
+
+    .metric-card {
+      min-height: 89px;
+      padding: 15px 16px;
+    }
+
+    .metric-main {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .metric-card.price-metric { padding: 13px 16px 14px; }
+    .metric-card.price-metric .metric-value { font-size: clamp(22px, 2.5vw, 31px); letter-spacing: -.05em; }
+    .metric-title { color: var(--muted-2); font-size: 10px; font-weight: 750; letter-spacing: .04em; text-transform: uppercase; }
+    .metric-value { margin-top: 8px; color: var(--text); font-family: var(--mono); font-size: 17px; font-weight: 750; white-space: nowrap; }
+    .metric-sub { margin-top: 5px; color: var(--muted); font-size: 10px; }
+    .metric-up { color: var(--mint) !important; }
+    .metric-down { color: var(--coral) !important; }
+    .metric-neutral { color: var(--muted) !important; }
+
+    .asset-mini {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .coin-icon {
+      width: 29px;
+      height: 29px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(165, 148, 255, .3);
+      border-radius: 9px;
+      color: var(--violet);
+      background: var(--violet-soft);
+      font-size: 11px;
+      font-weight: 850;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1.65fr) minmax(320px, .75fr);
+      gap: 14px;
+      align-items: start;
+    }
+
+    .panel { overflow: hidden; }
+
+    .panel-heading {
+      min-height: 67px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 17px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .panel-title { margin: 5px 0 0; font-size: 14px; letter-spacing: -.01em; }
+    .panel-subtitle { margin: 4px 0 0; color: var(--muted); font-size: 10px; }
+
+    .chart-panel { min-width: 0; }
+
+    .chart-heading-right,
+    .chart-legend,
+    .chart-footer,
+    .signal-head,
+    .book-summary,
+    .learning-head,
+    .mini-stat-row,
+    .section-row {
+      display: flex;
+      align-items: center;
+    }
+
+    .chart-heading-right { gap: 10px; }
+
+    .chart-live-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 8px;
+      border: 1px solid rgba(92, 224, 189, .18);
+      border-radius: 999px;
+      color: var(--mint);
+      background: var(--mint-soft);
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: .06em;
+    }
+
+    .chart-live-badge .tiny-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+
+    .chart-stage {
+      position: relative;
+      height: 448px;
+      background:
+        linear-gradient(rgba(129, 148, 178, .035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(129, 148, 178, .035) 1px, transparent 1px),
+        #0c121b;
+      background-size: 56px 56px;
+    }
+
+    #chartCanvas { width: 100%; height: 100%; display: block; }
+
+    .chart-watermark {
+      position: absolute;
+      left: 18px;
+      bottom: 13px;
+      color: rgba(130, 144, 165, .38);
+      font-family: var(--mono);
+      font-size: 9px;
+      letter-spacing: .08em;
+      pointer-events: none;
+    }
+
+    .chart-legend {
+      position: absolute;
+      top: 12px;
+      left: 16px;
+      gap: 13px;
+      padding: 5px 8px;
+      border: 1px solid rgba(142, 164, 194, .12);
+      border-radius: 7px;
+      color: var(--muted);
+      background: rgba(8, 11, 17, .52);
+      backdrop-filter: blur(8px);
+      font-size: 9px;
+    }
+
+    .legend-item { display: inline-flex; align-items: center; gap: 5px; }
+    .legend-line { width: 12px; height: 2px; border-radius: 2px; background: var(--mint); }
+    .legend-line.ask { background: var(--coral); }
+    .legend-line.price { background: var(--blue); }
+
+    .chart-footer {
+      justify-content: space-between;
+      gap: 10px;
+      min-height: 38px;
+      padding: 0 16px;
+      border-top: 1px solid var(--line);
+      color: var(--muted-2);
+      font-size: 10px;
+    }
+
+    .chart-footer strong { color: var(--muted); font-family: var(--mono); font-weight: 600; }
+    .chart-footer-right { display: inline-flex; align-items: center; gap: 13px; }
+
+    .side-stack { display: grid; gap: 14px; min-width: 0; }
+
+    .orderbook-panel { min-height: 522px; }
+
+    .book-summary {
+      justify-content: space-between;
+      gap: 9px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .book-stat { min-width: 0; }
+    .book-stat-label { display: block; color: var(--muted-2); font-size: 9px; font-weight: 750; letter-spacing: .07em; text-transform: uppercase; }
+    .book-stat-value { display: block; margin-top: 4px; color: var(--text); font-family: var(--mono); font-size: 12px; font-weight: 700; }
+    .book-stat-value.mint { color: var(--mint); }
+    .book-stat-value.coral { color: var(--coral); }
+
+    .book-columns {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      padding: 9px 16px 5px;
+      color: var(--muted-2);
+      font-family: var(--mono);
+      font-size: 9px;
+    }
+
+    .book-columns span:last-child { text-align: right; }
+    .book-section-title { padding: 7px 16px 5px; color: var(--muted-2); font-size: 9px; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
+
+    .book-rows { padding: 0 10px; }
+    .book-row {
+      position: relative;
+      z-index: 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 72px;
+      align-items: center;
+      min-height: 26px;
+      padding: 0 6px;
+      border-radius: 6px;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 10px;
+      overflow: hidden;
+    }
+
+    .book-row::before {
+      content: "";
+      position: absolute;
+      z-index: -1;
+      top: 3px;
+      bottom: 3px;
+      right: 0;
+      width: var(--depth, 0%);
+      border-radius: 4px 0 0 4px;
+      background: rgba(255, 136, 123, .09);
+    }
+
+    .book-row.bid::before { background: rgba(92, 224, 189, .09); }
+    .book-row.is-wall { color: var(--text); font-weight: 700; box-shadow: inset 2px 0 0 var(--row-color); background: color-mix(in srgb, var(--row-color) 6%, transparent); }
+    .book-row.is-wall::after { content: "DUVAR"; margin-left: 5px; color: var(--row-color); font-family: var(--sans); font-size: 7px; font-weight: 850; letter-spacing: .06em; }
+    .book-row.is-wall { grid-template-columns: minmax(0, 1fr) 72px 32px; }
+    .book-price { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .book-qty { text-align: right; }
+    .book-mid {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin: 4px 16px 5px;
+      padding: 8px 10px;
+      border: 1px dashed rgba(113, 183, 255, .25);
+      border-radius: 8px;
+      color: var(--blue);
+      background: rgba(113, 183, 255, .06);
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .book-mid small { color: var(--muted-2); font-family: var(--sans); font-size: 8px; font-weight: 700; letter-spacing: .08em; }
+    .book-empty { padding: 15px 8px; color: var(--muted-2); text-align: center; font-size: 10px; }
+
+    .signal-panel { padding-bottom: 16px; }
+    .signal-head { justify-content: space-between; padding: 16px 17px 12px; }
+    .signal-score { color: var(--muted); font-family: var(--mono); font-size: 11px; }
+    .signal-main { display: flex; align-items: center; gap: 14px; padding: 0 17px 15px; }
+    .signal-orb {
+      width: 54px;
+      height: 54px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(165, 148, 255, .3);
+      border-radius: 17px;
+      color: var(--violet);
+      background: var(--violet-soft);
+      font-size: 25px;
+      font-weight: 500;
+    }
+
+    .signal-orb.up { color: var(--mint); border-color: rgba(92, 224, 189, .3); background: var(--mint-soft); }
+    .signal-orb.down { color: var(--coral); border-color: rgba(255, 136, 123, .3); background: var(--coral-soft); }
+    .signal-copy h3 { margin: 0; font-size: 19px; letter-spacing: -.03em; }
+    .signal-copy p { margin: 4px 0 0; color: var(--muted); font-size: 10px; }
+    .confidence-row { padding: 0 17px; }
+    .confidence-label { display: flex; justify-content: space-between; color: var(--muted-2); font-size: 9px; font-weight: 750; }
+    .confidence-label strong { color: var(--text); font-family: var(--mono); }
+    .progress-track { height: 6px; margin-top: 7px; overflow: hidden; border-radius: 99px; background: rgba(142, 164, 194, .10); }
+    .progress-fill { height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, var(--violet), var(--mint)); transition: width .35s ease; }
+    .signal-reasons { display: flex; flex-wrap: wrap; gap: 6px; padding: 14px 17px 0; }
+    .reason-chip { padding: 5px 7px; border: 1px solid var(--line); border-radius: 6px; color: var(--muted); background: rgba(142, 164, 194, .05); font-size: 9px; }
+    .reason-chip.positive { color: var(--mint); border-color: rgba(92, 224, 189, .18); background: var(--mint-soft); }
+    .reason-chip.negative { color: var(--coral); border-color: rgba(255, 136, 123, .18); background: var(--coral-soft); }
+    .signal-note { margin: 12px 17px 0; padding-top: 10px; border-top: 1px solid var(--line); color: var(--muted-2); font-size: 9px; line-height: 1.5; }
+
+    .lower-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.08fr) minmax(390px, .92fr);
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .pyramid-panel, .learning-panel { min-width: 0; }
+    .section-row { justify-content: space-between; gap: 10px; }
+    .panel-heading .section-row { width: 100%; }
+
+    .pyramid-content { padding: 17px; }
+    .pyramid-intro { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 15px; }
+    .pyramid-intro p { max-width: 420px; margin: 5px 0 0; color: var(--muted); font-size: 10px; line-height: 1.45; }
+    .pyramid-bias { flex: none; padding: 7px 9px; border: 1px solid var(--line); border-radius: 8px; color: var(--muted); background: rgba(142, 164, 194, .05); font-size: 9px; font-weight: 800; white-space: nowrap; }
+    .pyramid-bias.bid { color: var(--mint); border-color: rgba(92, 224, 189, .22); background: var(--mint-soft); }
+    .pyramid-bias.ask { color: var(--coral); border-color: rgba(255, 136, 123, .22); background: var(--coral-soft); }
+
+    .pyramid-list { display: grid; gap: 6px; }
+    .bucket-row { display: flex; align-items: center; gap: 9px; min-height: 38px; }
+    .bucket-index { width: 28px; color: var(--muted-2); font-family: var(--mono); font-size: 9px; text-align: right; }
+    .bucket-line { width: var(--bucket-width); min-width: 0; margin: 0 auto; }
+    .bucket-core {
+      display: grid;
+      grid-template-columns: 73px minmax(76px, 1fr) 90px minmax(60px, .7fr) 45px;
+      align-items: center;
+      gap: 9px;
+      min-height: 36px;
+      padding: 5px 9px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(142, 164, 194, .04);
+    }
+    .bucket-row.current .bucket-core { border-color: rgba(113, 183, 255, .4); background: rgba(113, 183, 255, .08); box-shadow: 0 0 24px rgba(113, 183, 255, .06); }
+    .bucket-row.bid .bucket-core { border-color: rgba(92, 224, 189, .17); }
+    .bucket-row.ask .bucket-core { border-color: rgba(255, 136, 123, .17); }
+    .bucket-label { color: var(--muted); font-size: 9px; font-weight: 800; letter-spacing: .03em; }
+    .bucket-row.current .bucket-label { color: var(--blue); }
+    .bucket-price { color: var(--text); font-family: var(--mono); font-size: 11px; font-weight: 700; white-space: nowrap; }
+    .bucket-meta { color: var(--muted-2); font-family: var(--mono); font-size: 9px; white-space: nowrap; }
+    .bucket-strength { height: 5px; overflow: hidden; border-radius: 10px; background: rgba(142, 164, 194, .09); }
+    .bucket-strength span { display: block; height: 100%; border-radius: inherit; background: var(--muted-2); }
+    .bucket-row.bid .bucket-strength span { background: var(--mint); }
+    .bucket-row.ask .bucket-strength span { background: var(--coral); }
+    .bucket-row.current .bucket-strength span { background: var(--blue); }
+    .bucket-status { color: var(--muted-2); font-size: 8px; font-weight: 800; text-align: right; }
+    .bucket-row.bid .bucket-status { color: var(--mint); }
+    .bucket-row.ask .bucket-status { color: var(--coral); }
+    .bucket-row.current .bucket-status { color: var(--blue); }
+    .pyramid-foot { display: flex; justify-content: space-between; gap: 12px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--muted-2); font-size: 9px; }
+    .pyramid-foot strong { color: var(--muted); font-family: var(--mono); font-weight: 600; }
+
+    .learning-content { padding: 17px; }
+    .learning-head { justify-content: space-between; gap: 12px; }
+    .memory-coin { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .memory-coin .coin-icon { width: 38px; height: 38px; border-radius: 12px; font-size: 12px; }
+    .memory-name { margin: 0; font-size: 13px; }
+    .memory-sub { margin: 4px 0 0; color: var(--muted-2); font-size: 9px; }
+    .memory-badge { gap: 5px; color: var(--mint); font-size: 9px; font-weight: 750; white-space: nowrap; }
+    .memory-badge .tiny-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--mint); }
+    .accuracy-block { display: grid; grid-template-columns: 70px minmax(0, 1fr); align-items: center; gap: 12px; margin-top: 19px; }
+    .accuracy-value { color: var(--text); font-family: var(--mono); font-size: 27px; font-weight: 800; letter-spacing: -.06em; }
+    .accuracy-value.empty { color: var(--muted-2); }
+    .accuracy-copy { color: var(--muted); font-size: 9px; line-height: 1.45; }
+    .accuracy-copy strong { color: var(--text); font-family: var(--mono); font-weight: 650; }
+    .accuracy-track { height: 8px; margin-top: 8px; overflow: hidden; border-radius: 99px; background: rgba(142, 164, 194, .10); }
+    .accuracy-fill { height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, var(--violet), var(--mint)); transition: width .35s ease; }
+    .learning-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin-top: 16px; }
+    .mini-stat { padding: 9px; border: 1px solid var(--line); border-radius: 9px; background: rgba(142, 164, 194, .035); }
+    .mini-stat-label { color: var(--muted-2); font-size: 8px; font-weight: 750; letter-spacing: .04em; text-transform: uppercase; }
+    .mini-stat-value { margin-top: 5px; color: var(--text); font-family: var(--mono); font-size: 12px; font-weight: 700; }
+    .weights { margin-top: 16px; }
+    .weights-title { color: var(--muted-2); font-size: 9px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+    .weight-list { display: grid; gap: 8px; margin-top: 10px; }
+    .weight-row { display: grid; grid-template-columns: 80px minmax(0, 1fr) 39px; align-items: center; gap: 8px; color: var(--muted); font-size: 9px; }
+    .weight-bar { position: relative; height: 5px; overflow: hidden; border-radius: 8px; background: rgba(142, 164, 194, .08); }
+    .weight-bar span { position: absolute; top: 0; bottom: 0; border-radius: inherit; }
+    .weight-bar span.pos { left: 50%; background: var(--mint); }
+    .weight-bar span.neg { right: 50%; background: var(--coral); }
+    .weight-value { color: var(--muted-2); font-family: var(--mono); font-size: 9px; text-align: right; }
+    .recent-heading { display: flex; justify-content: space-between; margin-top: 16px; color: var(--muted-2); font-size: 9px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+    .recent-list { display: grid; gap: 6px; margin-top: 8px; max-height: 115px; overflow: auto; }
+    .recent-row { display: grid; grid-template-columns: 8px 1fr auto auto; align-items: center; gap: 7px; padding: 7px 8px; border-radius: 7px; background: rgba(142, 164, 194, .035); color: var(--muted); font-size: 9px; }
+    .recent-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--coral); }
+    .recent-dot.correct { background: var(--mint); }
+    .recent-direction { color: var(--text); font-family: var(--mono); font-size: 9px; font-weight: 700; }
+    .recent-result { color: var(--muted-2); font-family: var(--mono); }
+    .recent-time { color: var(--muted-2); }
+    .empty-recent { padding: 9px 0 2px; color: var(--muted-2); font-size: 9px; line-height: 1.5; }
+    .learning-footer { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 13px; padding-top: 11px; border-top: 1px solid var(--line); }
+    .learning-footer small { color: var(--muted-2); font-size: 8px; line-height: 1.4; }
+
+    .disclaimer {
+      max-width: 780px;
+      margin: 16px auto 0;
+      color: var(--muted-2);
+      font-size: 9px;
+      line-height: 1.55;
+      text-align: center;
+    }
+
+    .mobile-nav { display: none; }
+
+    .toast {
+      position: fixed;
+      z-index: 20;
+      right: 22px;
+      bottom: 22px;
+      max-width: min(340px, calc(100vw - 32px));
+      padding: 11px 13px;
+      border: 1px solid rgba(92, 224, 189, .25);
+      border-radius: 10px;
+      color: var(--text);
+      background: #121b27;
+      box-shadow: var(--shadow);
+      font-size: 11px;
+      opacity: 0;
+      transform: translateY(8px);
+      pointer-events: none;
+      transition: .2s ease;
+    }
+
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    @media (max-width: 1120px) {
+      .market-strip { grid-template-columns: minmax(220px, 1.35fr) repeat(4, minmax(110px, 1fr)); }
+      .workspace { grid-template-columns: minmax(0, 1.45fr) minmax(300px, .8fr); }
+      .bucket-core { grid-template-columns: 67px minmax(65px, 1fr) 78px minmax(50px, .65fr) 40px; gap: 7px; }
+    }
+
+    @media (max-width: 900px) {
+      .app-shell { padding-right: 16px; padding-left: 16px; }
+      .market-strip { grid-template-columns: repeat(4, 1fr); }
+      .metric-card.price-metric { grid-column: span 2; }
+      .workspace, .lower-grid { grid-template-columns: 1fr; }
+      .side-stack { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+      .orderbook-panel { min-height: 0; }
+    }
+
+    @media (max-width: 640px) {
+      body { padding-bottom: calc(66px + env(safe-area-inset-bottom)); }
+      .app-shell { padding: 0 11px 25px; }
+      .topbar { min-height: 65px; }
+      .brand-mark { width: 31px; height: 31px; border-radius: 9px; font-size: 16px; }
+      .brand-name { font-size: 12px; }
+      .brand-sub { font-size: 8px; }
+      .top-actions { gap: 6px; }
+      .top-actions .text-button { display: none; }
+      .status-pill { min-height: 29px; padding: 0 8px; font-size: 9px; }
+      main { padding-top: 14px; }
+      .hero-toolbar { align-items: flex-start; flex-direction: column; gap: 10px; margin-bottom: 13px; }
+      .control-group { width: 100%; justify-content: space-between; }
+      .pair-select { width: 100%; min-width: 0; }
+      .pair-select-wrap { flex: 1; }
+      .feed-note { align-self: flex-end; margin-top: -3px; }
+      .timeframe-button { min-width: 34px; padding: 7px 6px; }
+      .market-strip { grid-template-columns: repeat(2, 1fr); gap: 7px; margin-bottom: 10px; }
+      .metric-card { min-height: 77px; padding: 11px 12px; border-radius: 14px; }
+      .metric-card.price-metric { grid-column: span 2; padding: 11px 12px; }
+      .metric-card.price-metric .metric-value { font-size: 25px; }
+      .metric-value { margin-top: 6px; font-size: 14px; }
+      .metric-title { font-size: 9px; }
+      .metric-sub { margin-top: 4px; font-size: 9px; }
+      .workspace, .lower-grid { gap: 10px; margin-top: 10px; }
+      .panel { border-radius: 15px; }
+      .panel-heading { min-height: 59px; padding: 12px 13px; }
+      .chart-stage { height: 335px; }
+      .chart-legend { left: 10px; top: 10px; gap: 8px; padding: 4px 6px; font-size: 8px; }
+      .chart-footer { min-height: 34px; padding: 0 12px; font-size: 9px; }
+      .chart-footer-right { gap: 8px; }
+      .side-stack { grid-template-columns: 1fr; gap: 10px; }
+      .orderbook-panel { min-height: 0; }
+      .book-summary { padding: 10px 13px; }
+      .book-columns { padding-left: 13px; padding-right: 13px; }
+      .book-section-title { padding-left: 13px; padding-right: 13px; }
+      .book-mid { margin-right: 13px; margin-left: 13px; }
+      .book-rows { padding-right: 8px; padding-left: 8px; }
+      .signal-head { padding: 14px 13px 10px; }
+      .signal-main, .confidence-row { padding-right: 13px; padding-left: 13px; }
+      .signal-reasons { padding-right: 13px; padding-left: 13px; }
+      .signal-note { margin-right: 13px; margin-left: 13px; }
+      .pyramid-content, .learning-content { padding: 13px; }
+      .pyramid-intro { gap: 8px; }
+      .pyramid-intro p { font-size: 9px; }
+      .pyramid-bias { padding: 6px 7px; font-size: 8px; }
+      .bucket-core { grid-template-columns: 62px minmax(67px, 1fr) 68px 40px; gap: 6px; padding: 4px 7px; }
+      .bucket-strength { display: none; }
+      .bucket-status { font-size: 7px; }
+      .bucket-meta { font-size: 8px; }
+      .bucket-price { font-size: 10px; }
+      .bucket-label { font-size: 8px; }
+      .bucket-index { width: 20px; font-size: 8px; }
+      .learning-head { align-items: flex-start; }
+      .memory-badge { font-size: 8px; }
+      .accuracy-block { grid-template-columns: 61px minmax(0, 1fr); gap: 9px; }
+      .accuracy-value { font-size: 24px; }
+      .learning-stats { gap: 5px; }
+      .mini-stat { padding: 8px 7px; }
+      .mini-stat-label { font-size: 7px; }
+      .mini-stat-value { font-size: 11px; }
+      .recent-row { grid-template-columns: 7px 1fr auto; }
+      .recent-time { display: none; }
+      .disclaimer { font-size: 8px; padding: 0 8px; }
+      .mobile-nav {
+        position: fixed;
+        z-index: 15;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        padding: 7px 8px calc(7px + env(safe-area-inset-bottom));
+        border-top: 1px solid var(--line);
+        background: rgba(10, 14, 21, .91);
+        backdrop-filter: blur(15px);
+      }
+      .mobile-nav button { border: 0; color: var(--muted-2); background: transparent; font-size: 9px; font-weight: 750; cursor: pointer; }
+      .mobile-nav button span { display: block; margin-bottom: 3px; color: var(--muted); font-size: 16px; }
+      .mobile-nav button.active, .mobile-nav button.active span { color: var(--mint); }
+      .toast { right: 12px; bottom: calc(70px + env(safe-area-inset-bottom)); }
+    }
+
+    @media (max-width: 385px) {
+      .metric-card.price-metric .metric-value { font-size: 22px; }
+      .chart-stage { height: 300px; }
+      .bucket-core { grid-template-columns: 57px minmax(58px, 1fr) 60px 35px; }
+      .bucket-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#top" aria-label="Lanka ana sayfa">
+        <span class="brand-mark">↗</span>
+        <span>
+          <span class="brand-name">LANKA</span>
+          <span class="brand-sub">orderbook intelligence</span>
+        </span>
+      </a>
+      <div class="top-actions">
+        <span class="status-pill demo" id="connectionPill"><span class="status-dot"></span><span id="connectionText">DEMO AKIŞI</span></span>
+        <button class="text-button" id="resetMemoryTop" type="button">Hafızayı sıfırla</button>
+        <button class="icon-button" id="refreshFeed" type="button" title="Akışı yenile" aria-label="Akışı yenile">↻</button>
+      </div>
+    </header>
+
+    <main id="top">
+      <section class="hero-toolbar" aria-label="Piyasa kontrolleri">
+        <div class="control-group">
+          <div>
+            <div class="control-label">Varlık</div>
+            <div class="pair-select-wrap" style="margin-top: 5px">
+              <select class="pair-select" id="assetSelect" aria-label="Coin seç">
+                <option value="BTCUSDT">BTC / USDT · Bitcoin</option>
+                <option value="ETHUSDT">ETH / USDT · Ethereum</option>
+                <option value="SOLUSDT">SOL / USDT · Solana</option>
+                <option value="BNBUSDT">BNB / USDT · BNB</option>
+                <option value="XRPUSDT">XRP / USDT · XRP</option>
+                <option value="DOGEUSDT">DOGE / USDT · Dogecoin</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <div class="control-label">Periyot</div>
+            <div class="timeframe-group" id="timeframeGroup" style="margin-top: 5px">
+              <button class="timeframe-button active" type="button" data-timeframe="1m">1m</button>
+              <button class="timeframe-button" type="button" data-timeframe="5m">5m</button>
+              <button class="timeframe-button" type="button" data-timeframe="15m">15m</button>
+              <button class="timeframe-button" type="button" data-timeframe="1h">1h</button>
+            </div>
+          </div>
+        </div>
+        <div class="feed-note" id="feedNote"><span class="tiny-dot"></span><span>Binance public feed · anahtarsız</span></div>
+      </section>
+
+      <section class="market-strip" aria-label="Piyasa özeti">
+        <article class="metric-card price-metric">
+          <div class="metric-main">
+            <div>
+              <div class="asset-mini"><span class="coin-icon" id="coinIcon">₿</span><span><span class="metric-title" id="assetName">Bitcoin</span><span class="metric-sub" id="assetPair">BTC / USDT</span></span></div>
+              <div class="metric-value" id="priceValue">—</div>
+            </div>
+            <div class="metric-sub" id="priceTime">—</div>
+          </div>
+        </article>
+        <article class="metric-card">
+          <div class="metric-title">24s değişim</div>
+          <div class="metric-value metric-neutral" id="changeValue">—</div>
+          <div class="metric-sub" id="volumeValue">Hacim bekleniyor</div>
+        </article>
+        <article class="metric-card">
+          <div class="metric-title">Orderbook baskısı</div>
+          <div class="metric-value metric-neutral" id="imbalanceValue">—</div>
+          <div class="metric-sub" id="imbalanceSub">Bids / asks dengesi</div>
+        </article>
+        <article class="metric-card">
+          <div class="metric-title">Spread</div>
+          <div class="metric-value" id="spreadValue">—</div>
+          <div class="metric-sub" id="spreadSub">En iyi alış · satış</div>
+        </article>
+        <article class="metric-card">
+          <div class="metric-title">Coin hafızası</div>
+          <div class="metric-value metric-neutral" id="memoryAccuracy">—</div>
+          <div class="metric-sub" id="memorySamples">0 doğrulama</div>
+        </article>
+      </section>
+
+      <section class="workspace">
+        <article class="panel chart-panel" id="chartSection">
+          <div class="panel-heading">
+            <div>
+              <div class="eyebrow">Fiyat akışı · <span id="chartPairLabel">BTC / USDT</span></div>
+              <h2 class="panel-title">Duvarlarla mum grafik</h2>
+              <p class="panel-subtitle">Yeşil: alış duvarı · kırmızı: satış duvarı · çizgiler canlı fiyat alanını gösterir</p>
+            </div>
+            <div class="chart-heading-right">
+              <span class="chart-live-badge"><span class="tiny-dot"></span><span id="chartFeedLabel">CANLI</span></span>
+            </div>
+          </div>
+          <div class="chart-stage">
+            <canvas id="chartCanvas" aria-label="Canlı mum grafik"></canvas>
+            <div class="chart-legend">
+              <span class="legend-item"><span class="legend-line"></span> alış duvarı</span>
+              <span class="legend-item"><span class="legend-line ask"></span> satış duvarı</span>
+              <span class="legend-item"><span class="legend-line price"></span> son fiyat</span>
+            </div>
+            <div class="chart-watermark">LANKA / ORDERBOOK MEMORY</div>
+          </div>
+          <div class="chart-footer">
+            <span><strong id="candleCount">0</strong> mum · <strong id="wallCount">0</strong> aktif duvar</span>
+            <span class="chart-footer-right"><span>Güncelleme <strong id="lastUpdate">—</strong></span><span id="candleTimeframe">1m</span></span>
+          </div>
+        </article>
+
+        <aside class="side-stack">
+          <article class="panel orderbook-panel" id="orderbookSection">
+            <div class="panel-heading">
+              <div>
+                <div class="eyebrow">Piyasa derinliği</div>
+                <h2 class="panel-title">Orderbook duvarları</h2>
+              </div>
+              <span class="eyebrow" id="depthCount">20 seviye</span>
+            </div>
+            <div class="book-summary">
+              <div class="book-stat"><span class="book-stat-label">Alış duvarı</span><span class="book-stat-value mint" id="bidWallValue">—</span></div>
+              <div class="book-stat"><span class="book-stat-label">Denge</span><span class="book-stat-value" id="bookBalanceValue">—</span></div>
+              <div class="book-stat"><span class="book-stat-label">Satış duvarı</span><span class="book-stat-value coral" id="askWallValue">—</span></div>
+            </div>
+            <div class="book-columns"><span>Fiyat</span><span>Adet</span></div>
+            <div class="book-section-title">Satış · asks</div>
+            <div class="book-rows" id="asksRows"></div>
+            <div class="book-mid"><span id="bookMidPrice">—</span><small>SPREAD <span id="bookMidSpread">—</span></small></div>
+            <div class="book-section-title">Alış · bids</div>
+            <div class="book-rows" id="bidsRows"></div>
+          </article>
+
+          <article class="panel signal-panel" id="signalSection">
+            <div class="signal-head">
+              <div>
+                <div class="eyebrow">Coin bazlı model</div>
+                <h2 class="panel-title">Yön tahmini</h2>
+              </div>
+              <span class="signal-score" id="signalScore">score —</span>
+            </div>
+            <div class="signal-main">
+              <div class="signal-orb" id="signalOrb">↔</div>
+              <div class="signal-copy"><h3 id="signalDirection">YATAY</h3><p id="signalDescription">Veri toplanıyor · yeni model</p></div>
+            </div>
+            <div class="confidence-row">
+              <div class="confidence-label"><span>Model güveni</span><strong id="confidenceValue">—</strong></div>
+              <div class="progress-track"><div class="progress-fill" id="confidenceFill"></div></div>
+            </div>
+            <div class="signal-reasons" id="signalReasons"></div>
+            <div class="signal-note" id="signalNote">Tahminler yalnızca orderbook davranışından türetilir; işlem önerisi değildir.</div>
+          </article>
+        </aside>
+      </section>
+
+      <section class="lower-grid">
+        <article class="panel pyramid-panel" id="pyramidSection">
+          <div class="panel-heading">
+            <div class="section-row">
+              <div>
+                <div class="eyebrow">Wall map · kademeli bölgeler</div>
+                <h2 class="panel-title">PİRAMİT KOVALARI</h2>
+              </div>
+              <span class="eyebrow" id="pyramidPair">BTC</span>
+            </div>
+          </div>
+          <div class="pyramid-content">
+            <div class="pyramid-intro">
+              <div><div class="eyebrow">Duvar yoğunluğuna göre</div><p>Fiyatın çevresindeki güçlü alış ve satış duvarları, destekten dirence beş kademeli kovaya ayrılır.</p></div>
+              <span class="pyramid-bias" id="pyramidBias">DENGE</span>
+            </div>
+            <div class="pyramid-list" id="pyramidBuckets"></div>
+            <div class="pyramid-foot"><span>Yakın duvar <strong id="nearestWall">—</strong></span><span>Duvar gücü <strong id="wallStrength">—</strong></span></div>
+          </div>
+        </article>
+
+        <article class="panel learning-panel" id="learningSection">
+          <div class="panel-heading">
+            <div class="section-row">
+              <div>
+                <div class="eyebrow">Kalıcı coin hafızası</div>
+                <h2 class="panel-title">Modelin öğrendikleri</h2>
+              </div>
+              <span class="memory-badge"><span class="tiny-dot"></span> localStorage</span>
+            </div>
+          </div>
+          <div class="learning-content">
+            <div class="learning-head">
+              <div class="memory-coin"><span class="coin-icon" id="memoryCoinIcon">₿</span><div><h3 class="memory-name" id="memoryName">BTC / USDT hafızası</h3><p class="memory-sub">Her coin ayrı ağırlıklarla güncellenir.</p></div></div>
+              <button class="text-button" id="resetMemory" type="button">Bu coini sıfırla</button>
+            </div>
+            <div class="accuracy-block">
+              <div class="accuracy-value empty" id="accuracyValue">—</div>
+              <div><div class="accuracy-copy" id="accuracyCopy">Henüz doğrulanmış yön yok. Model, fiyat sonucu geldikçe kendi ağırlıklarını günceller.</div><div class="accuracy-track"><div class="accuracy-fill" id="accuracyFill"></div></div></div>
+            </div>
+            <div class="learning-stats">
+              <div class="mini-stat"><div class="mini-stat-label">Örnek</div><div class="mini-stat-value" id="sampleCount">0</div></div>
+              <div class="mini-stat"><div class="mini-stat-label">Doğru</div><div class="mini-stat-value" id="correctCount">0</div></div>
+              <div class="mini-stat"><div class="mini-stat-label">Sonuç</div><div class="mini-stat-value" id="lastOutcome">—</div></div>
+            </div>
+            <div class="weights"><div class="weights-title">Öğrenilmiş sinyal ağırlıkları</div><div class="weight-list" id="weightList"></div></div>
+            <div class="recent-heading"><span>Son doğrulamalar</span><span id="learningSavedAt">—</span></div>
+            <div class="recent-list" id="recentList"></div>
+            <div class="learning-footer"><small>Öğrenilen veriler bu cihazda kalıcıdır.<br>Tarayıcı verisi temizlenirse hafıza da silinir.</small><button class="icon-button" id="exportMemory" type="button" title="Coin hafızasını kopyala" aria-label="Coin hafızasını kopyala">↗</button></div>
+          </div>
+        </article>
+      </section>
+
+      <p class="disclaimer">LANKA, Binance’in herkese açık akışını kullanır; anahtar istemez. Bağlantı yoksa ekran otomatik olarak demo verisine düşer. Orderbook hızlı değişir; yön tahmini deneysel bir ölçümdür, finansal tavsiye değildir.</p>
+    </main>
+
+    <nav class="mobile-nav" aria-label="Bölümler">
+      <button class="active" type="button" data-scroll="chartSection"><span>◒</span>Grafik</button>
+      <button type="button" data-scroll="orderbookSection"><span>≋</span>Duvarlar</button>
+      <button type="button" data-scroll="pyramidSection"><span>⌂</span>Kovalar</button>
+      <button type="button" data-scroll="learningSection"><span>◎</span>Hafıza</button>
+    </nav>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    (() => {
+      'use strict';
+
+      const STORAGE_KEY = 'lanka-learning-v1';
+      const PREF_KEY = 'lanka-preferences-v1';
+      const $ = (selector) => document.querySelector(selector);
+      const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+      const now = () => Date.now();
+      const randomBetween = (min, max) => min + Math.random() * (max - min);
+      const localeNumber = new Intl.NumberFormat('tr-TR');
+
+      const CONFIG = {
+        BTCUSDT: { base: 'BTC', name: 'Bitcoin', icon: '₿', seed: 17, price: 67240, decimals: 2, qtyDecimals: 3, volatility: .0011, depth: 1.2 },
+        ETHUSDT: { base: 'ETH', name: 'Ethereum', icon: '◆', seed: 29, price: 3528, decimals: 2, qtyDecimals: 3, volatility: .0015, depth: 11 },
+        SOLUSDT: { base: 'SOL', name: 'Solana', icon: '≋', seed: 41, price: 148.2, decimals: 3, qtyDecimals: 1, volatility: .0021, depth: 105 },
+        BNBUSDT: { base: 'BNB', name: 'BNB', icon: '◆', seed: 53, price: 604.5, decimals: 2, qtyDecimals: 2, volatility: .0012, depth: 8 },
+        XRPUSDT: { base: 'XRP', name: 'XRP', icon: '✕', seed: 67, price: .5264, decimals: 4, qtyDecimals: 0, volatility: .0025, depth: 7600 },
+        DOGEUSDT: { base: 'DOGE', name: 'Dogecoin', icon: 'Ð', seed: 79, price: .1184, decimals: 5, qtyDecimals: 0, volatility: .0028, depth: 26000 }
+      };
+
+      const state = {
+        currentSymbol: 'BTCUSDT',
+        timeframe: '1m',
+        markets: {},
+        learning: loadLearning(),
+        socket: null,
+        reconnectTimer: null,
+        demoTimer: null,
+        liveWatchTimer: null,
+        renderQueued: false,
+        toastTimer: null,
+        lastRender: 0
+      };
+
+      function makeRng(seed) {
+        let value = (seed >>> 0) || 1;
+        return () => {
+          value += 0x6D2B79F5;
+          let t = value;
+          t = Math.imul(t ^ t >>> 15, t | 1);
+          t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+          return ((t ^ t >>> 14) >>> 0) / 4294967296;
+        };
+      }
+
+      function defaultLearning() {
+        return {
+          version: 1,
+          correct: 0,
+          total: 0,
+          streak: 0,
+          bestStreak: 0,
+          lastAt: 0,
+          lastOutcome: null,
+          recent: [],
+          weights: { bias: 0, imbalance: 1.12, wallBias: .88, persistence: .63, momentum: .34, spread: -.08 }
+        };
+      }
+
+      function loadLearning() {
+        const base = {};
+        Object.keys(CONFIG).forEach((symbol) => { base[symbol] = defaultLearning(); });
+        try {
+          const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+          Object.keys(CONFIG).forEach((symbol) => {
+            const saved = parsed[symbol];
+            if (!saved) return;
+            const fresh = defaultLearning();
+            base[symbol] = {
+              ...fresh,
+              ...saved,
+              recent: Array.isArray(saved.recent) ? saved.recent.slice(0, 12) : [],
+              weights: { ...fresh.weights, ...(saved.weights || {}) }
+            };
+          });
+        } catch (error) {
+          console.info('LANKA hafıza okunamadı:', error);
+        }
+        return base;
+      }
+
+      function saveLearning() {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state.learning));
+        } catch (error) {
+          console.info('LANKA hafıza kaydedilemedi:', error);
+        }
+      }
+
+      function savePreferences() {
+        try { localStorage.setItem(PREF_KEY, JSON.stringify({ symbol: state.currentSymbol, timeframe: state.timeframe })); } catch (error) { /* no-op */ }
+      }
+
+      function loadPreferences() {
+        try {
+          const prefs = JSON.parse(localStorage.getItem(PREF_KEY) || '{}');
+          if (CONFIG[prefs.symbol]) state.currentSymbol = prefs.symbol;
+          if (['1m', '5m', '15m', '1h'].includes(prefs.timeframe)) state.timeframe = prefs.timeframe;
+        } catch (error) { /* no-op */ }
+      }
+
+      function formatPrice(value, symbol = state.currentSymbol) {
+        if (!Number.isFinite(value)) return '—';
+        const config = CONFIG[symbol];
+        const digits = config ? config.decimals : (value < 1 ? 5 : 2);
+        return new Intl.NumberFormat('tr-TR', { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(value);
+      }
+
+      function formatCompact(value) {
+        if (!Number.isFinite(value)) return '—';
+        const abs = Math.abs(value);
+        if (abs >= 1000000000) return `${(value / 1000000000).toFixed(1)}B`;
+        if (abs >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+        if (abs >= 1000) return `${(value / 1000).toFixed(1)}K`;
+        return localeNumber.format(Math.round(value));
+      }
+
+      function formatQty(value, symbol = state.currentSymbol) {
+        if (!Number.isFinite(value)) return '—';
+        const digits = CONFIG[symbol]?.qtyDecimals ?? 2;
+        return new Intl.NumberFormat('tr-TR', { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(value);
+      }
+
+      function signedPercent(value) {
+        if (!Number.isFinite(value)) return '—';
+        return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
+      }
+
+      function timeLabel(timestamp) {
+        if (!timestamp) return '—';
+        return new Date(timestamp).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      }
+
+      function shortTime(timestamp) {
+        if (!timestamp) return '—';
+        return new Date(timestamp).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+      }
+
+      function median(values) {
+        if (!values.length) return 0;
+        const sorted = [...values].sort((a, b) => a - b);
+        const middle = Math.floor(sorted.length / 2);
+        return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+      }
+
+      function getMarket(symbol = state.currentSymbol) {
+        if (!state.markets[symbol]) state.markets[symbol] = createMarket(symbol);
+        return state.markets[symbol];
+      }
+
+      function createMarket(symbol) {
+        const config = CONFIG[symbol];
+        const rng = makeRng(config.seed);
+        let price = config.price;
+        const candles = [];
+        const candleStep = 60 * 1000;
+        const start = now() - (89 * candleStep);
+        for (let i = 0; i < 90; i += 1) {
+          const open = price;
+          const move = (rng() - .47) * config.volatility * 1.7;
+          const close = open * (1 + move);
+          const high = Math.max(open, close) * (1 + rng() * config.volatility * .75);
+          const low = Math.min(open, close) * (1 - rng() * config.volatility * .75);
+          candles.push({ time: start + i * candleStep, open, high, low, close, volume: config.depth * (1 + rng() * 2) });
+          price = close;
+        }
+        const market = {
+          symbol,
+          config,
+          rng,
+          price,
+          previousPrice: price,
+          priceAtOpen: candles[0].open,
+          tickerChange: ((price / candles[0].open) - 1) * 100,
+          volume24h: config.depth * 9000,
+          candles,
+          orderbook: { bids: [], asks: [] },
+          walls: [],
+          wallHistory: [],
+          features: { imbalance: 0, wallBias: 0, persistence: 0, momentum: 0, spread: 0, score: 0 },
+          live: false,
+          lastLiveMessage: 0,
+          lastBookAt: 0,
+          lastTickAt: now(),
+          demoCandleStart: now(),
+          demoWallBidIndex: 4,
+          demoWallAskIndex: 7,
+          demoWallLife: 0,
+          demoPressure: (rng() - .5) * .35,
+          lastPredictionAt: 0,
+          pendingPrediction: null,
+          lastForecast: null,
+          lastOutcome: null,
+          lastWallSample: 0,
+          lastRealCandle: 0
+        };
+        buildDemoBook(market);
+        return market;
+      }
+
+      function buildDemoBook(market) {
+        const { config, rng } = market;
+        const price = market.price;
+        const tick = Math.max(price * (price < 1 ? .0005 : .00012), price < 1 ? .00001 : .01);
+        market.demoWallLife += 1;
+        if (market.demoWallLife > 20) {
+          market.demoWallLife = 0;
+          market.demoWallBidIndex = 3 + Math.floor(rng() * 9);
+          market.demoWallAskIndex = 3 + Math.floor(rng() * 9);
+          market.demoPressure = clamp(market.demoPressure + (rng() - .5) * .35, -.65, .65);
+        }
+        const bids = [];
+        const asks = [];
+        for (let i = 1; i <= 20; i += 1) {
+          const bidWave = 0.78 + Math.sin((i + market.demoWallLife) * .72) * .14;
+          const askWave = 0.78 + Math.cos((i + market.demoWallLife) * .61) * .14;
+          const bidNoise = .72 + rng() * .65;
+          const askNoise = .72 + rng() * .65;
+          let bidQty = config.depth * bidWave * bidNoise * (1 + market.demoPressure * .28) / (1 + i * .035);
+          let askQty = config.depth * askWave * askNoise * (1 - market.demoPressure * .28) / (1 + i * .035);
+          if (i === market.demoWallBidIndex) bidQty *= 3.2 + rng() * 1.2;
+          if (i === market.demoWallAskIndex) askQty *= 3.0 + rng() * 1.25;
+          bids.push({ price: price - tick * i, qty: Math.max(0, bidQty) });
+          asks.push({ price: price + tick * i, qty: Math.max(0, askQty) });
+        }
+        market.orderbook = { bids, asks };
+      }
+
+      function updateDemoCandle(market) {
+        const currentTime = now();
+        const duration = ({ '1m': 5500, '5m': 9000, '15m': 13000, '1h': 18000 })[state.timeframe] || 5500;
+        let candle = market.candles[market.candles.length - 1];
+        if (!candle || currentTime - market.demoCandleStart >= duration) {
+          market.demoCandleStart = currentTime;
+          candle = { time: currentTime, open: market.price, high: market.price, low: market.price, close: market.price, volume: 0 };
+          market.candles.push(candle);
+          if (market.candles.length > 100) market.candles.shift();
+        }
+        candle.close = market.price;
+        candle.high = Math.max(candle.high, market.price);
+        candle.low = Math.min(candle.low, market.price);
+        candle.volume += market.config.depth * .09;
+      }
+
+      function runDemoTick() {
+        const market = getMarket();
+        if (market.live && now() - market.lastLiveMessage < 3600) return;
+        const features = market.features || {};
+        const drift = (features.imbalance || 0) * market.config.volatility * .18;
+        const noise = (market.rng() - .5) * market.config.volatility * .38;
+        const gentle = Math.sin(now() / 17000 + market.config.seed) * market.config.volatility * .045;
+        const returnValue = drift + noise + gentle;
+        market.previousPrice = market.price;
+        market.price = Math.max(.00001, market.price * (1 + returnValue));
+        market.lastTickAt = now();
+        market.tickerChange = ((market.price / market.priceAtOpen) - 1) * 100;
+        market.volume24h += market.config.depth * (market.rng() * 5);
+        buildDemoBook(market);
+        updateDemoCandle(market);
+        processMarketUpdate(market);
+      }
+
+      function normalizeBookRows(rows, side) {
+        if (!Array.isArray(rows)) return [];
+        return rows.map((row) => ({ price: Number(row[0] ?? row.price), qty: Number(row[1] ?? row.qty) }))
+          .filter((row) => Number.isFinite(row.price) && Number.isFinite(row.qty) && row.qty > 0)
+          .sort((a, b) => side === 'bid' ? b.price - a.price : a.price - b.price)
+          .slice(0, 20);
+      }
+
+      function detectWalls(market) {
+        const all = [...market.orderbook.bids, ...market.orderbook.asks];
+        if (!all.length) return [];
+        const baseline = Math.max(median(all.map((row) => row.qty)), Number.EPSILON);
+        const makeSideWalls = (rows, side) => {
+          const sorted = [...rows].sort((a, b) => b.qty - a.qty);
+          const candidates = sorted.filter((row) => row.qty >= baseline * 1.55).slice(0, 3);
+          const selected = candidates.length ? candidates : sorted.slice(0, 1);
+          return selected.map((row) => ({
+            ...row,
+            side,
+            ratio: row.qty / baseline,
+            strength: clamp((row.qty / baseline - 1) / 4, .18, 1)
+          }));
+        };
+        return [...makeSideWalls(market.orderbook.bids, 'bid'), ...makeSideWalls(market.orderbook.asks, 'ask')]
+          .sort((a, b) => b.strength - a.strength);
+      }
+
+      function calculateFeatures(market) {
+        const bids = market.orderbook.bids || [];
+        const asks = market.orderbook.asks || [];
+        const weighted = (rows) => rows.reduce((total, row, index) => total + row.qty / (1 + index * .13), 0);
+        const bidDepth = weighted(bids);
+        const askDepth = weighted(asks);
+        const totalDepth = bidDepth + askDepth || 1;
+        const imbalance = clamp((bidDepth - askDepth) / totalDepth, -1, 1);
+        const bidWalls = market.walls.filter((wall) => wall.side === 'bid');
+        const askWalls = market.walls.filter((wall) => wall.side === 'ask');
+        const bidWallPower = bidWalls.reduce((total, wall) => total + wall.strength / (1 + Math.abs(wall.price - market.price) / market.price * 900), 0);
+        const askWallPower = askWalls.reduce((total, wall) => total + wall.strength / (1 + Math.abs(wall.price - market.price) / market.price * 900), 0);
+        const wallBias = clamp((bidWallPower - askWallPower) / (bidWallPower + askWallPower || 1), -1, 1);
+        const recentHistory = market.wallHistory.slice(-8);
+        const persistence = recentHistory.length ? clamp(recentHistory.reduce((total, item) => total + item.bias, 0) / recentHistory.length, -1, 1) : wallBias;
+        const oldCandle = market.candles[Math.max(0, market.candles.length - 7)];
+        const momentum = oldCandle ? clamp(((market.price / oldCandle.close) - 1) * 180, -1, 1) : 0;
+        const bestBid = bids[0]?.price || market.price;
+        const bestAsk = asks[0]?.price || market.price;
+        const spread = bestAsk > bestBid ? (bestAsk - bestBid) / market.price : 0;
+        const spreadSignal = clamp(.0012 - spread * 5, -.7, .7);
+        market.features = { imbalance, wallBias, persistence, momentum, spread: spreadSignal, bidDepth, askDepth, bidWallPower, askWallPower };
+        return market.features;
+      }
+
+      function processMarketUpdate(market) {
+        market.walls = detectWalls(market);
+        const features = calculateFeatures(market);
+        const timestamp = now();
+        if (timestamp - market.lastWallSample > 800) {
+          const bid = market.walls.filter((wall) => wall.side === 'bid');
+          const ask = market.walls.filter((wall) => wall.side === 'ask');
+          const bidPower = bid.reduce((sum, wall) => sum + wall.strength, 0);
+          const askPower = ask.reduce((sum, wall) => sum + wall.strength, 0);
+          market.wallHistory.push({ time: timestamp, bias: clamp((bidPower - askPower) / (bidPower + askPower || 1), -1, 1), bidPower, askPower });
+          if (market.wallHistory.length > 35) market.wallHistory.shift();
+          market.lastWallSample = timestamp;
+        }
+        evaluatePendingPrediction(market);
+        if (!market.pendingPrediction && timestamp - market.lastPredictionAt > 10500) createPrediction(market);
+        scheduleRender();
+      }
+
+      function createPrediction(market) {
+        const learning = state.learning[market.symbol];
+        const f = calculateFeatures(market);
+        const weights = learning.weights;
+        const featureMap = { imbalance: f.imbalance, wallBias: f.wallBias, persistence: f.persistence, momentum: f.momentum, spread: f.spread };
+        const score = weights.bias + Object.keys(featureMap).reduce((sum, key) => sum + (Number(weights[key]) || 0) * featureMap[key], 0);
+        const direction = score > .12 ? 'YUKARI' : score < -.12 ? 'AŞAĞI' : 'YATAY';
+        const confidence = clamp(51 + Math.abs(Math.tanh(score)) * 38 + Math.abs(f.imbalance) * 5, 51, 94);
+        market.features.score = score;
+        market.lastPredictionAt = now();
+        market.lastForecast = { time: now(), entry: market.price, direction, score, confidence, features: featureMap };
+        market.pendingPrediction = { ...market.lastForecast, horizon: 13000 };
+      }
+
+      function directionFromReturn(returnValue) {
+        if (returnValue > .00038) return 'YUKARI';
+        if (returnValue < -.00038) return 'AŞAĞI';
+        return 'YATAY';
+      }
+
+      function evaluatePendingPrediction(market) {
+        const prediction = market.pendingPrediction;
+        if (!prediction || now() - prediction.time < prediction.horizon) return;
+        const move = market.price / prediction.entry - 1;
+        const actual = directionFromReturn(move);
+        const correct = actual === prediction.direction;
+        const learning = state.learning[market.symbol];
+        const target = actual === 'YUKARI' ? 1 : actual === 'AŞAĞI' ? -1 : 0;
+        const predictedValue = Math.tanh(prediction.score);
+        const error = target - predictedValue;
+        const learningRate = .105 / Math.sqrt(1 + learning.total * .09);
+        const features = prediction.features;
+        ['imbalance', 'wallBias', 'persistence', 'momentum', 'spread'].forEach((key) => {
+          learning.weights[key] = clamp((Number(learning.weights[key]) || 0) + learningRate * error * features[key], -3, 3);
+        });
+        learning.weights.bias = clamp((Number(learning.weights.bias) || 0) + learningRate * error * .42, -1.5, 1.5);
+        learning.total += 1;
+        if (correct) {
+          learning.correct += 1;
+          learning.streak += 1;
+          learning.bestStreak = Math.max(learning.bestStreak, learning.streak);
+        } else {
+          learning.streak = 0;
+        }
+        learning.lastAt = now();
+        learning.lastOutcome = { correct, predicted: prediction.direction, actual, move, at: now() };
+        learning.recent.unshift(learning.lastOutcome);
+        learning.recent = learning.recent.slice(0, 12);
+        market.lastOutcome = learning.lastOutcome;
+        market.pendingPrediction = null;
+        saveLearning();
+        showToast(`${market.config.base}: ${correct ? 'doğru' : 'farklı'} yön sonucu kaydedildi`);
+      }
+
+      function getWallForBucket(market, side, index) {
+        const walls = market.walls.filter((wall) => wall.side === side).sort((a, b) => {
+          const distanceA = Math.abs(a.price - market.price);
+          const distanceB = Math.abs(b.price - market.price);
+          return distanceA - distanceB;
+        });
+        return walls[index] || null;
+      }
+
+      function bucketRows(market) {
+        const support1 = getWallForBucket(market, 'bid', 0);
+        const support2 = getWallForBucket(market, 'bid', 1);
+        const resistance1 = getWallForBucket(market, 'ask', 0);
+        const resistance2 = getWallForBucket(market, 'ask', 1);
+        const p = market.price;
+        const fallback = (side, level) => ({
+          price: p * (side === 'bid' ? 1 - (.0012 * level) : 1 + (.0012 * level)),
+          qty: 0,
+          strength: .16,
+          fallback: true,
+          side
+        });
+        return [
+          { label: 'DİRENÇ 2', side: 'ask', wall: resistance2 || fallback('ask', 2), index: '01' },
+          { label: 'DİRENÇ 1', side: 'ask', wall: resistance1 || fallback('ask', 1), index: '02' },
+          { label: 'DENGE', side: 'current', wall: { price: p, strength: 1, qty: 0 }, index: '03' },
+          { label: 'DESTEK 1', side: 'bid', wall: support1 || fallback('bid', 1), index: '04' },
+          { label: 'DESTEK 2', side: 'bid', wall: support2 || fallback('bid', 2), index: '05' }
+        ];
+      }
+
+      function renderPyramid(market) {
+        const rows = bucketRows(market);
+        const container = $('#pyramidBuckets');
+        container.innerHTML = rows.map((row, index) => {
+          const wall = row.wall;
+          const strength = Math.round(clamp(wall.strength, .08, 1) * 100);
+          const width = `${52 + index * 10}%`;
+          const status = row.side === 'current' ? 'AKTİF' : wall.fallback ? 'İZLE' : 'DUVAR';
+          const meta = row.side === 'current' ? 'son fiyat' : wall.fallback ? 'yakın bölge' : `${formatQty(wall.qty, market.symbol)} ${market.config.base}`;
+          return `<div class="bucket-row ${row.side}" style="--bucket-width:${width}">
+            <span class="bucket-index">${row.index}</span>
+            <div class="bucket-line"><div class="bucket-core">
+              <span class="bucket-label">${row.label}</span>
+              <span class="bucket-price">${formatPrice(wall.price, market.symbol)}</span>
+              <span class="bucket-meta">${meta}</span>
+              <span class="bucket-strength"><span style="width:${strength}%"></span></span>
+              <span class="bucket-status">${status}</span>
+            </div></div>
+          </div>`;
+        }).join('');
+        const features = market.features;
+        const bias = features.imbalance + features.wallBias * .7;
+        const biasEl = $('#pyramidBias');
+        biasEl.className = `pyramid-bias ${bias > .1 ? 'bid' : bias < -.1 ? 'ask' : ''}`;
+        biasEl.textContent = bias > .1 ? 'ALIŞ DUVARI BASKIN' : bias < -.1 ? 'SATIŞ DUVARI BASKIN' : 'DENGE';
+        const closest = market.walls.filter((wall) => wall.price !== market.price).sort((a, b) => Math.abs(a.price - market.price) - Math.abs(b.price - market.price))[0];
+        $('#nearestWall').textContent = closest ? `${closest.side === 'bid' ? 'AL' : 'SAT'} ${formatPrice(closest.price, market.symbol)}` : '—';
+        $('#wallStrength').textContent = closest ? `${Math.round(closest.strength * 100)}%` : '—';
+        $('#pyramidPair').textContent = market.config.base;
+      }
+
+      function renderOrderBook(market) {
+        const asks = [...market.orderbook.asks].sort((a, b) => b.price - a.price).slice(0, 8);
+        const bids = [...market.orderbook.bids].sort((a, b) => b.price - a.price).slice(0, 8);
+        const topRows = [...asks, ...bids];
+        const maxQty = Math.max(...topRows.map((row) => row.qty), 1);
+        const isWall = (row, side) => market.walls.some((wall) => wall.side === side && Math.abs(wall.price - row.price) / row.price < .000001);
+        const renderRows = (rows, side) => rows.length ? rows.map((row) => {
+          const wall = isWall(row, side);
+          const width = Math.round(clamp(row.qty / maxQty * 100, 7, 100));
+          return `<div class="book-row ${side === 'bid' ? 'bid' : 'ask'} ${wall ? 'is-wall' : ''}" style="--depth:${width}%;--row-color:${side === 'bid' ? 'var(--mint)' : 'var(--coral)'}"><span class="book-price">${formatPrice(row.price, market.symbol)}</span><span class="book-qty">${formatQty(row.qty, market.symbol)}</span></div>`;
+        }).join('') : '<div class="book-empty">Orderbook bekleniyor</div>';
+        $('#asksRows').innerHTML = renderRows(asks, 'ask');
+        $('#bidsRows').innerHTML = renderRows(bids, 'bid');
+        const bestBid = market.orderbook.bids[0]?.price || market.price;
+        const bestAsk = market.orderbook.asks[0]?.price || market.price;
+        const spread = bestAsk - bestBid;
+        const f = market.features;
+        const ratio = clamp((f.imbalance + 1) * 50, 0, 100);
+        $('#bookMidPrice').textContent = formatPrice(market.price, market.symbol);
+        $('#bookMidSpread').textContent = formatPrice(spread, market.symbol);
+        $('#bidWallValue').textContent = wallSummary(market, 'bid');
+        $('#askWallValue').textContent = wallSummary(market, 'ask');
+        $('#bookBalanceValue').textContent = `${Math.round(ratio)} / ${Math.round(100 - ratio)}`;
+        $('#depthCount').textContent = `${market.orderbook.bids.length + market.orderbook.asks.length} seviye`;
+      }
+
+      function wallSummary(market, side) {
+        const wall = market.walls.filter((item) => item.side === side).sort((a, b) => b.strength - a.strength)[0];
+        if (!wall) return '—';
+        return `${formatPrice(wall.price, market.symbol)}`;
+      }
+
+      function renderSignal(market) {
+        const forecast = market.lastForecast || { direction: 'YATAY', confidence: 51, score: 0, time: 0 };
+        const direction = forecast.direction;
+        const orb = $('#signalOrb');
+        orb.className = `signal-orb ${direction === 'YUKARI' ? 'up' : direction === 'AŞAĞI' ? 'down' : ''}`;
+        orb.textContent = direction === 'YUKARI' ? '↗' : direction === 'AŞAĞI' ? '↘' : '↔';
+        $('#signalDirection').textContent = direction;
+        $('#signalScore').textContent = `score ${Number(forecast.score || 0).toFixed(2)}`;
+        $('#confidenceValue').textContent = `${Math.round(forecast.confidence || 51)}%`;
+        $('#confidenceFill').style.width = `${forecast.confidence || 51}%`;
+        const learning = state.learning[market.symbol];
+        const status = market.pendingPrediction ? 'sonucun oluşması bekleniyor' : learning.total ? `${learning.total} doğrulama ile ayarlandı` : 'veri biriktiriyor';
+        $('#signalDescription').textContent = `${status} · ${forecast.time ? shortTime(forecast.time) : 'şimdi'}`;
+        const f = market.features;
+        const reasons = [
+          { text: `İmbalance ${f.imbalance >= 0 ? '+' : ''}${(f.imbalance * 100).toFixed(0)}%`, tone: f.imbalance > .08 ? 'positive' : f.imbalance < -.08 ? 'negative' : '' },
+          { text: `Duvar ${f.wallBias >= 0 ? '+' : ''}${(f.wallBias * 100).toFixed(0)}%`, tone: f.wallBias > .08 ? 'positive' : f.wallBias < -.08 ? 'negative' : '' },
+          { text: `Momentum ${f.momentum >= 0 ? '+' : ''}${(f.momentum * 100).toFixed(0)}%`, tone: f.momentum > .08 ? 'positive' : f.momentum < -.08 ? 'negative' : '' },
+          { text: market.pendingPrediction ? 'Doğrulama bekliyor' : 'Yeni örnek hazır', tone: '' }
+        ];
+        $('#signalReasons').innerHTML = reasons.map((reason) => `<span class="reason-chip ${reason.tone}">${reason.text}</span>`).join('');
+      }
+
+      function renderLearning(market) {
+        const learning = state.learning[market.symbol];
+        const total = Number(learning.total) || 0;
+        const correct = Number(learning.correct) || 0;
+        const accuracy = total ? correct / total * 100 : 0;
+        const config = market.config;
+        $('#memoryName').textContent = `${config.base} / USDT hafızası`;
+        $('#memoryCoinIcon').textContent = config.icon;
+        $('#accuracyValue').textContent = total ? `${Math.round(accuracy)}%` : '—';
+        $('#accuracyValue').classList.toggle('empty', !total);
+        $('#accuracyFill').style.width = `${accuracy}%`;
+        $('#accuracyCopy').innerHTML = total ? `<strong>${correct} / ${total}</strong> yön sonucu doğru. Model coin başına ayrı ağırlıklarını güncelliyor.` : 'Henüz doğrulanmış yön yok. Model, fiyat sonucu geldikçe kendi ağırlıklarını günceller.';
+        $('#sampleCount').textContent = total;
+        $('#correctCount').textContent = correct;
+        $('#lastOutcome').textContent = learning.lastOutcome ? (learning.lastOutcome.correct ? 'DOĞRU' : 'FARKLI') : '—';
+        $('#lastOutcome').className = `mini-stat-value ${learning.lastOutcome ? (learning.lastOutcome.correct ? 'metric-up' : 'metric-down') : ''}`;
+        $('#learningSavedAt').textContent = learning.lastAt ? `son ${shortTime(learning.lastAt)}` : 'henüz yok';
+        const weights = [
+          ['imbalance', 'İmbalance'], ['wallBias', 'Duvar yönü'], ['persistence', 'Duvar kalıcılığı'], ['momentum', 'Momentum'], ['spread', 'Spread']
+        ];
+        $('#weightList').innerHTML = weights.map(([key, label]) => {
+          const value = Number(learning.weights[key]) || 0;
+          const width = `${clamp(Math.abs(value) / 2.5 * 50, 2, 50)}%`;
+          return `<div class="weight-row"><span>${label}</span><span class="weight-bar"><span class="${value >= 0 ? 'pos' : 'neg'}" style="width:${width}"></span></span><span class="weight-value">${value >= 0 ? '+' : ''}${value.toFixed(2)}</span></div>`;
+        }).join('');
+        const recent = learning.recent || [];
+        $('#recentList').innerHTML = recent.length ? recent.slice(0, 6).map((item) => `<div class="recent-row"><span class="recent-dot ${item.correct ? 'correct' : ''}"></span><span class="recent-direction">${item.predicted} → ${item.actual}</span><span class="recent-result">${item.correct ? 'DOĞRU' : 'FARKLI'}</span><span class="recent-time">${shortTime(item.at)}</span></div>`).join('') : '<div class="empty-recent">İlk tahminin vadesi dolduğunda burada sonucu göreceksin. Her coin kendi geçmişini ayrı tutar.</div>';
+      }
+
+      function renderMetrics(market) {
+        const config = market.config;
+        $('#coinIcon').textContent = config.icon;
+        $('#memoryCoinIcon').textContent = config.icon;
+        $('#assetName').textContent = config.name;
+        $('#assetPair').textContent = `${config.base} / USDT`;
+        $('#chartPairLabel').textContent = `${config.base} / USDT`;
+        $('#priceValue').textContent = formatPrice(market.price, market.symbol);
+        $('#priceTime').textContent = timeLabel(market.lastTickAt);
+        const change = market.tickerChange;
+        const changeEl = $('#changeValue');
+        changeEl.textContent = signedPercent(change);
+        changeEl.className = `metric-value ${change > .02 ? 'metric-up' : change < -.02 ? 'metric-down' : 'metric-neutral'}`;
+        $('#volumeValue').textContent = `Hacim ${formatCompact(market.volume24h)} ${config.base}`;
+        const f = market.features;
+        const imbalance = f.imbalance * 100;
+        const imbalanceEl = $('#imbalanceValue');
+        imbalanceEl.textContent = `${imbalance >= 0 ? '+' : ''}${imbalance.toFixed(1)}%`;
+        imbalanceEl.className = `metric-value ${imbalance > 3 ? 'metric-up' : imbalance < -3 ? 'metric-down' : 'metric-neutral'}`;
+        $('#imbalanceSub').textContent = imbalance >= 0 ? 'Alış tarafı ağır basıyor' : 'Satış tarafı ağır basıyor';
+        const bestBid = market.orderbook.bids[0]?.price || market.price;
+        const bestAsk = market.orderbook.asks[0]?.price || market.price;
+        const spread = Math.max(0, bestAsk - bestBid);
+        $('#spreadValue').textContent = formatPrice(spread, market.symbol);
+        $('#spreadSub').textContent = `${formatPrice(bestBid, market.symbol)} · ${formatPrice(bestAsk, market.symbol)}`;
+        const learning = state.learning[market.symbol];
+        const memoryAccuracy = $('#memoryAccuracy');
+        memoryAccuracy.textContent = learning.total ? `${Math.round(learning.correct / learning.total * 100)}%` : '—';
+        memoryAccuracy.className = `metric-value ${learning.total ? (learning.correct / learning.total >= .5 ? 'metric-up' : 'metric-down') : 'metric-neutral'}`;
+        $('#memorySamples').textContent = `${learning.total} doğrulama · kalıcı`;
+        $('#candleCount').textContent = market.candles.length;
+        $('#wallCount').textContent = market.walls.length;
+        $('#lastUpdate').textContent = timeLabel(market.lastTickAt);
+        $('#candleTimeframe').textContent = state.timeframe;
+        $('#feedNote').classList.toggle('live', market.live && now() - market.lastLiveMessage < 5000);
+        $('#chartFeedLabel').textContent = market.live && now() - market.lastLiveMessage < 5000 ? 'CANLI' : 'DEMO';
+        $('#assetSelect').value = market.symbol;
+      }
+
+      function drawChart(market) {
+        const canvas = $('#chartCanvas');
+        const rect = canvas.getBoundingClientRect();
+        if (!rect.width || !rect.height) return;
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const pixelWidth = Math.floor(rect.width * dpr);
+        const pixelHeight = Math.floor(rect.height * dpr);
+        if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
+          canvas.width = pixelWidth;
+          canvas.height = pixelHeight;
+        }
+        const ctx = canvas.getContext('2d');
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        const width = rect.width;
+        const height = rect.height;
+        ctx.clearRect(0, 0, width, height);
+        const candles = market.candles.slice(-72);
+        if (!candles.length) return;
+        const pad = { left: 12, right: 63, top: 20, bottom: 30 };
+        const volumeHeight = Math.max(28, height * .13);
+        const plotBottom = height - pad.bottom - volumeHeight;
+        const plotHeight = plotBottom - pad.top;
+        const allPrices = candles.flatMap((candle) => [candle.high, candle.low]);
+        market.walls.forEach((wall) => allPrices.push(wall.price));
+        allPrices.push(market.price);
+        const rawMin = Math.min(...allPrices);
+        const rawMax = Math.max(...allPrices);
+        const range = Math.max(rawMax - rawMin, market.price * .002);
+        const minPrice = rawMin - range * .12;
+        const maxPrice = rawMax + range * .12;
+        const xStep = (width - pad.left - pad.right) / candles.length;
+        const xAt = (index) => pad.left + xStep * (index + .5);
+        const yAt = (price) => pad.top + (maxPrice - price) / (maxPrice - minPrice) * plotHeight;
+
+        ctx.font = '10px ' + getComputedStyle(document.documentElement).getPropertyValue('--mono');
+        ctx.lineWidth = 1;
+        for (let i = 0; i <= 5; i += 1) {
+          const y = pad.top + plotHeight * i / 5;
+          ctx.strokeStyle = 'rgba(142,164,194,.10)';
+          ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(width - pad.right + 8, y); ctx.stroke();
+          const value = maxPrice - (maxPrice - minPrice) * i / 5;
+          ctx.fillStyle = 'rgba(130,144,165,.76)';
+          ctx.textAlign = 'left';
+          ctx.fillText(formatPrice(value, market.symbol), width - pad.right + 12, y + 3);
+        }
+
+        market.walls.forEach((wall) => {
+          const y = yAt(wall.price);
+          if (y < pad.top - 10 || y > plotBottom + 8) return;
+          const color = wall.side === 'bid' ? [92, 224, 189] : [255, 136, 123];
+          const bandWidth = Math.min(170, 52 + wall.strength * 110);
+          const startX = wall.side === 'bid' ? pad.left + 4 : width - pad.right - bandWidth;
+          const gradient = ctx.createLinearGradient(startX, 0, startX + bandWidth, 0);
+          gradient.addColorStop(0, `rgba(${color.join(',')},${.02 + wall.strength * .04})`);
+          gradient.addColorStop(1, `rgba(${color.join(',')},${.15 + wall.strength * .08})`);
+          ctx.fillStyle = gradient;
+          ctx.fillRect(startX, y - 6, bandWidth, 12);
+          ctx.strokeStyle = `rgba(${color.join(',')},${.48 + wall.strength * .32})`;
+          ctx.setLineDash([4, 5]);
+          ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(width - pad.right + 5, y); ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = `rgba(${color.join(',')},.92)`;
+          ctx.font = '700 8px ' + getComputedStyle(document.documentElement).getPropertyValue('--sans');
+          ctx.textAlign = wall.side === 'bid' ? 'left' : 'right';
+          ctx.fillText(`${wall.side === 'bid' ? 'AL' : 'SAT'} DUVAR`, wall.side === 'bid' ? pad.left + 5 : width - pad.right - 5, y - 8);
+        });
+
+        const maxVolume = Math.max(...candles.map((candle) => candle.volume || 0), 1);
+        candles.forEach((candle, index) => {
+          const x = xAt(index);
+          const isUp = candle.close >= candle.open;
+          const color = isUp ? '#5ce0bd' : '#ff887b';
+          const highY = yAt(candle.high);
+          const lowY = yAt(candle.low);
+          const openY = yAt(candle.open);
+          const closeY = yAt(candle.close);
+          const candleWidth = Math.max(2, Math.min(13, xStep * .62));
+          ctx.strokeStyle = color;
+          ctx.lineWidth = Math.max(1, Math.min(2, dpr));
+          ctx.beginPath(); ctx.moveTo(x, highY); ctx.lineTo(x, lowY); ctx.stroke();
+          ctx.fillStyle = color;
+          ctx.globalAlpha = isUp ? .85 : .76;
+          ctx.fillRect(x - candleWidth / 2, Math.min(openY, closeY), candleWidth, Math.max(1, Math.abs(closeY - openY)));
+          ctx.globalAlpha = 1;
+          const volumeY = plotBottom + (volumeHeight - 5) * (1 - (candle.volume || 0) / maxVolume);
+          ctx.globalAlpha = .24;
+          ctx.fillRect(x - candleWidth / 2, volumeY, candleWidth, height - pad.bottom - volumeY);
+          ctx.globalAlpha = 1;
+        });
+
+        const currentY = yAt(market.price);
+        ctx.strokeStyle = 'rgba(113,183,255,.95)';
+        ctx.setLineDash([6, 4]);
+        ctx.beginPath(); ctx.moveTo(pad.left, currentY); ctx.lineTo(width - pad.right + 7, currentY); ctx.stroke();
+        ctx.setLineDash([]);
+        const priceLabel = formatPrice(market.price, market.symbol);
+        ctx.font = '700 9px ' + getComputedStyle(document.documentElement).getPropertyValue('--mono');
+        const labelWidth = Math.max(49, ctx.measureText(priceLabel).width + 12);
+        ctx.fillStyle = '#71b7ff';
+        ctx.beginPath(); ctx.roundRect(width - labelWidth - 4, currentY - 9, labelWidth, 18, 4); ctx.fill();
+        ctx.fillStyle = '#07101a';
+        ctx.textAlign = 'center';
+        ctx.fillText(priceLabel, width - labelWidth / 2 - 4, currentY + 3);
+
+        ctx.fillStyle = 'rgba(130,144,165,.65)';
+        ctx.font = '9px ' + getComputedStyle(document.documentElement).getPropertyValue('--mono');
+        ctx.textAlign = 'center';
+        const labelIndexes = [0, Math.floor(candles.length * .25), Math.floor(candles.length * .5), Math.floor(candles.length * .75), candles.length - 1];
+        labelIndexes.forEach((index) => {
+          const candle = candles[index];
+          if (!candle) return;
+          ctx.fillText(new Date(candle.time).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }), xAt(index), height - 10);
+        });
+      }
+
+      function render() {
+        state.renderQueued = false;
+        const market = getMarket();
+        renderMetrics(market);
+        renderOrderBook(market);
+        renderSignal(market);
+        renderPyramid(market);
+        renderLearning(market);
+        drawChart(market);
+        state.lastRender = now();
+      }
+
+      function scheduleRender() {
+        if (state.renderQueued) return;
+        state.renderQueued = true;
+        requestAnimationFrame(render);
+      }
+
+      function setConnection(mode, text) {
+        const pill = $('#connectionPill');
+        pill.className = `status-pill ${mode}`;
+        $('#connectionText').textContent = text;
+      }
+
+      function disconnectSocket() {
+        if (state.reconnectTimer) clearTimeout(state.reconnectTimer);
+        if (state.liveWatchTimer) clearTimeout(state.liveWatchTimer);
+        state.reconnectTimer = null;
+        state.liveWatchTimer = null;
+        if (state.socket) {
+          state.socket.onclose = null;
+          state.socket.onerror = null;
+          state.socket.close();
+          state.socket = null;
+        }
+      }
+
+      function connectFeed() {
+        disconnectSocket();
+        const symbol = state.currentSymbol;
+        const market = getMarket(symbol);
+        market.live = false;
+        setConnection('demo', 'DEMO AKIŞI');
+        const streamSymbol = symbol.toLowerCase();
+        const streams = `${streamSymbol}@depth20@100ms/${streamSymbol}@kline_${state.timeframe}/${streamSymbol}@ticker`;
+        let ws;
+        try {
+          ws = new WebSocket(`wss://stream.binance.com:9443/stream?streams=${streams}`);
+        } catch (error) {
+          fallbackToDemo(symbol);
+          return;
+        }
+        state.socket = ws;
+        setConnection('', 'BAĞLANIYOR');
+        ws.onopen = () => {
+          if (state.currentSymbol !== symbol) return;
+          setConnection('', 'AKIŞ AÇILDI');
+          state.liveWatchTimer = setTimeout(() => {
+            if (state.currentSymbol === symbol && now() - market.lastLiveMessage > 2800) fallbackToDemo(symbol);
+          }, 3000);
+        };
+        ws.onmessage = (event) => {
+          if (state.currentSymbol !== symbol) return;
+          try {
+            const envelope = JSON.parse(event.data);
+            const data = envelope.data || envelope;
+            const eventType = data.e;
+            market.lastLiveMessage = now();
+            market.live = true;
+            setConnection('live', 'CANLI AKIŞ');
+            if (eventType === 'depthUpdate') {
+              market.orderbook = { bids: normalizeBookRows(data.b, 'bid'), asks: normalizeBookRows(data.a, 'ask') };
+              market.lastBookAt = now();
+              processMarketUpdate(market);
+            } else if (eventType === 'kline') {
+              applyKline(market, data.k);
+              processMarketUpdate(market);
+            } else if (eventType === '24hrTicker') {
+              const nextPrice = Number(data.c);
+              if (Number.isFinite(nextPrice)) {
+                market.previousPrice = market.price;
+                market.price = nextPrice;
+                market.tickerChange = Number(data.P) || ((nextPrice / market.priceAtOpen - 1) * 100);
+                market.volume24h = Number(data.v) || market.volume24h;
+                market.lastTickAt = now();
+                processMarketUpdate(market);
+              }
+            }
+            scheduleRender();
+          } catch (error) {
+            console.info('LANKA stream mesajı okunamadı', error);
+          }
+        };
+        ws.onerror = () => {
+          if (state.currentSymbol === symbol) fallbackToDemo(symbol);
+        };
+        ws.onclose = () => {
+          if (state.currentSymbol !== symbol) return;
+          market.live = false;
+          setConnection('demo', 'DEMO AKIŞI');
+          scheduleReconnect(symbol);
+        };
+      }
+
+      function applyKline(market, kline) {
+        const candle = {
+          time: Number(kline.t),
+          open: Number(kline.o),
+          high: Number(kline.h),
+          low: Number(kline.l),
+          close: Number(kline.c),
+          volume: Number(kline.v) || 0
+        };
+        market.price = candle.close;
+        market.lastTickAt = now();
+        market.tickerChange = market.tickerChange || 0;
+        const last = market.candles[market.candles.length - 1];
+        if (last && last.time === candle.time) market.candles[market.candles.length - 1] = candle;
+        else {
+          market.candles.push(candle);
+          if (market.candles.length > 100) market.candles.shift();
+        }
+        market.lastRealCandle = candle.time;
+      }
+
+      function fallbackToDemo(symbol) {
+        if (state.currentSymbol !== symbol) return;
+        const market = getMarket(symbol);
+        market.live = false;
+        setConnection('demo', 'DEMO AKIŞI');
+        $('#feedNote').classList.remove('live');
+        scheduleReconnect(symbol);
+        scheduleRender();
+      }
+
+      function scheduleReconnect(symbol) {
+        if (state.reconnectTimer || state.currentSymbol !== symbol) return;
+        state.reconnectTimer = setTimeout(() => {
+          state.reconnectTimer = null;
+          if (state.currentSymbol === symbol) connectFeed();
+        }, 10000);
+      }
+
+      function switchAsset(symbol) {
+        if (!CONFIG[symbol] || symbol === state.currentSymbol) return;
+        disconnectSocket();
+        state.currentSymbol = symbol;
+        const market = getMarket(symbol);
+        if (!market.orderbook.bids.length) buildDemoBook(market);
+        savePreferences();
+        connectFeed();
+        scheduleRender();
+        showToast(`${market.config.base} hafızası açıldı`);
+      }
+
+      function switchTimeframe(timeframe) {
+        if (!['1m', '5m', '15m', '1h'].includes(timeframe) || timeframe === state.timeframe) return;
+        state.timeframe = timeframe;
+        document.querySelectorAll('.timeframe-button').forEach((button) => button.classList.toggle('active', button.dataset.timeframe === timeframe));
+        savePreferences();
+        connectFeed();
+        scheduleRender();
+      }
+
+      function resetCurrentMemory() {
+        const market = getMarket();
+        if (!window.confirm(`${market.config.base} için birikmiş model hafızası sıfırlansın mı?`)) return;
+        state.learning[market.symbol] = defaultLearning();
+        market.pendingPrediction = null;
+        market.lastForecast = null;
+        saveLearning();
+        render();
+        showToast(`${market.config.base} hafızası sıfırlandı`);
+      }
+
+      function exportCurrentMemory() {
+        const market = getMarket();
+        const data = JSON.stringify({ symbol: market.symbol, ...state.learning[market.symbol] }, null, 2);
+        if (navigator.clipboard?.writeText) {
+          navigator.clipboard.writeText(data).then(() => showToast('Coin hafızası panoya kopyalandı')).catch(() => showToast('Kopyalama için tarayıcı izni gerekli'));
+        } else showToast('Bu tarayıcı kopyalamayı desteklemiyor');
+      }
+
+      function showToast(message) {
+        const toast = $('#toast');
+        toast.textContent = message;
+        toast.classList.add('show');
+        clearTimeout(state.toastTimer);
+        state.toastTimer = setTimeout(() => toast.classList.remove('show'), 2800);
+      }
+
+      function bindEvents() {
+        $('#assetSelect').addEventListener('change', (event) => switchAsset(event.target.value));
+        document.querySelectorAll('.timeframe-button').forEach((button) => button.addEventListener('click', () => switchTimeframe(button.dataset.timeframe)));
+        $('#resetMemory').addEventListener('click', resetCurrentMemory);
+        $('#resetMemoryTop').addEventListener('click', resetCurrentMemory);
+        $('#exportMemory').addEventListener('click', exportCurrentMemory);
+        $('#refreshFeed').addEventListener('click', () => { connectFeed(); showToast('Akış yeniden bağlanıyor'); });
+        document.querySelectorAll('.mobile-nav button').forEach((button) => button.addEventListener('click', () => {
+          document.querySelectorAll('.mobile-nav button').forEach((item) => item.classList.remove('active'));
+          button.classList.add('active');
+          document.getElementById(button.dataset.scroll)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }));
+        window.addEventListener('resize', scheduleRender);
+      }
+
+      function boot() {
+        loadPreferences();
+        $('#assetSelect').value = state.currentSymbol;
+        document.querySelectorAll('.timeframe-button').forEach((button) => button.classList.toggle('active', button.dataset.timeframe === state.timeframe));
+        bindEvents();
+        getMarket();
+        render();
+        state.demoTimer = setInterval(runDemoTick, 900);
+        connectFeed();
+        window.setInterval(() => {
+          const market = getMarket();
+          if (market && !market.pendingPrediction && now() - market.lastPredictionAt > 10500) processMarketUpdate(market);
+        }, 1500);
+      }
+
+      boot();
+    })();
+  </script>
+</body>
+</html>
